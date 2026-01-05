@@ -7,7 +7,6 @@ import { setUser, setAuthError, setAuthStatus } from "../../features/AuthSlice";
 import { toggleTheme } from "../../features/ThemeSlice";
 import { Moon, Sun, ArrowLeft } from "lucide-react";
 
-
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,19 +72,6 @@ const Login = () => {
 
         <div className="flex items-center gap-4">
           {/* THEME TOGGLE */}
-          <button
-            onClick={() => dispatch(toggleTheme())}
-            className="p-2 rounded-full transition hover:scale-110"
-            style={{
-              backgroundColor: theme === "light" ? "#E9E2F9" : "#1B1B1B",
-            }}
-          >
-            {theme === "light" ? (
-              <Moon className="w-6 h-6 text-[#6B54D3]" />
-            ) : (
-              <Sun className="w-6 h-6 text-[#3CB14A]" />
-            )}
-          </button>
 
           {/* BACK BTN */}
           <button
@@ -101,6 +87,19 @@ const Login = () => {
           >
             <ArrowLeft className="w-5 h-5" />
             Back
+          </button>
+          <button
+            onClick={() => dispatch(toggleTheme())}
+            className="p-2 rounded-full transition hover:scale-110"
+            style={{
+              backgroundColor: theme === "light" ? "#E9E2F9" : "#1B1B1B",
+            }}
+          >
+            {theme === "light" ? (
+              <Moon className="w-6 h-6 text-[#6B54D3]" />
+            ) : (
+              <Sun className="w-6 h-6 text-[#3CB14A]" />
+            )}
           </button>
         </div>
       </header>
