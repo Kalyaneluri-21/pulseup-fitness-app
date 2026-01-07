@@ -3,6 +3,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserPlus, UserMinus, Users, UserCheck, UserX, MessageCircle } from 'lucide-react';
 import Header from '../components/Header';
+import ProfileCard from '../components/ProfileCard';
+import LoadingSpinner from '../components/LoadingSpinner';
+import RocketLoader from '../components/RocketLoader';
 import { 
   fetchAllUsers, 
   fetchUserFriends,
@@ -18,7 +21,8 @@ import {
 } from '../features/BuddySlice';
 import { 
   createConversation,
-  selectConversations 
+  selectConversations,
+  fetchChatConversations
 } from '../features/ChatSlice';
 
 export default function Buddies() {
@@ -38,12 +42,13 @@ export default function Buddies() {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'friends' | 'requests'
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [removingFriend, setRemovingFriend] = useState(null);
 
   // Theme-based styling
-  const bgColor = theme === "light" ? "bg-gray-50" : "bg-gray-900";
-  const cardBg = theme === "light" ? "bg-white" : "bg-gray-800";
+  const bgColor = theme === "light" ? "bg-gradient-to-br from-[#caf0f8] via-[#e0f2fe] to-[#f0fdfa]" : "bg-[#0a0a0a]";
+  const cardBg = theme === "light" ? "bg-[#f0fdfa]" : "bg-[#1a1a2e]";
   const textColor = theme === "light" ? "text-gray-900" : "text-gray-100";
-  const borderColor = theme === "light" ? "border-gray-200" : "border-gray-700";
+  const borderColor = theme === "light" ? "border-[#90e0ef]" : "border-gray-600";
 
   // Load data on component mount
   useEffect(() => {
@@ -52,7 +57,8 @@ export default function Buddies() {
       Promise.all([
         dispatch(fetchAllUsers(user.uid)),
         dispatch(fetchUserFriends(user.uid)),
-        dispatch(fetchFriendRequests(user.uid))
+        dispatch(fetchFriendRequests(user.uid)),
+        dispatch(fetchChatConversations(user.uid))
       ]).finally(() => setLoading(false));
     }
   }, [dispatch, user?.uid]);
@@ -64,11 +70,15 @@ export default function Buddies() {
     if (isFriend) return 'friend';
 
     // Check if there's a pending request from them
-    const hasRequestFromThem = friendRequests.some(request => request.fromUserId === userId);
+    const hasRequestFromThem = friendRequests.some(request => 
+      request.fromUserId === userId && request.type === 'received'
+    );
     if (hasRequestFromThem) return 'request-received';
 
     // Check if we sent them a request
-    const hasRequestToThem = friendRequests.some(request => request.toUserId === userId);
+    const hasRequestToThem = friendRequests.some(request => 
+      request.toUserId === userId && request.type === 'sent'
+    );
     if (hasRequestToThem) return 'request-sent';
 
     return 'none';
@@ -77,9 +87,12 @@ export default function Buddies() {
   // Helper function to get friend request object
   const getFriendRequest = (userId) => {
     return friendRequests.find(request => 
-      request.fromUserId === userId || request.toUserId === userId
+      (request.fromUserId === userId && request.type === 'received') ||
+      (request.toUserId === userId && request.type === 'sent')
     );
   };
+
+
 
   // Helper function to get friendship object
   const getFriendship = (userId) => {
@@ -128,11 +141,23 @@ export default function Buddies() {
       })).unwrap();
       
       // Create initial conversation with welcome message
-      const welcomeMessage = `Talk to your new friend ${allUsers.find(u => u.uid === fromUserId)?.name || 'User'}! It will be an awesome experience! 🎉`;
-      await dispatch(createConversation({
-        participants: [user.uid, fromUserId],
-        initialMessage: welcomeMessage
-      })).unwrap();
+      const friendName = allUsers.find(u => u.uid === fromUserId)?.name || 'User';
+      const welcomeMessage = `Talk to your new friend ${friendName}! It will be an awesome experience! 🎉`;
+      
+      try {
+        await dispatch(createConversation({
+          participants: [user.uid, fromUserId],
+          initialMessage: welcomeMessage
+        })).unwrap();
+      } catch (conversationError) {
+        console.error('Failed to create welcome conversation:', conversationError);
+      }
+      
+      // Refresh friends and requests to update UI immediately
+      await Promise.all([
+        dispatch(fetchUserFriends(user.uid)),
+        dispatch(fetchFriendRequests(user.uid))
+      ]);
       
     } catch (error) {
       console.error('Failed to accept friend request:', error);
@@ -143,6 +168,10 @@ export default function Buddies() {
   const handleRejectFriendRequest = async (requestId) => {
     try {
       await dispatch(rejectFriendRequest(requestId)).unwrap();
+      // Refresh requests to update UI immediately
+      if (user?.uid) {
+        await dispatch(fetchFriendRequests(user.uid));
+      }
     } catch (error) {
       console.error('Failed to reject friend request:', error);
     }
@@ -150,19 +179,61 @@ export default function Buddies() {
 
   // Handle removing friend
   const handleRemoveFriend = async (userId) => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      console.error('No user logged in');
+      return;
+    }
+    
+    if (removingFriend === userId) {
+      console.log('Already removing this friend');
+      return;
+    }
+    
+    console.log('Attempting to remove friend:', userId);
+    console.log('Current friends:', friends);
     
     const friendship = getFriendship(userId);
-    if (!friendship) return;
+    console.log('Found friendship:', friendship);
+    
+    if (!friendship) {
+      console.error('No friendship found for user:', userId);
+      return;
+    }
+    
+    setRemovingFriend(userId);
     
     try {
-      await dispatch(removeFriend({ 
+      console.log('Dispatching removeFriend with:', {
+        userId: user.uid,
+        friendId: userId,
+        friendshipId: friendship.id
+      });
+      
+      const result = await dispatch(removeFriend({ 
         userId: user.uid, 
         friendId: userId,
         friendshipId: friendship.id
       })).unwrap();
+      
+      console.log('Remove friend successful:', result);
+      
+      // Refresh all data to update UI immediately
+      await Promise.all([
+        dispatch(fetchAllUsers(user.uid)),
+        dispatch(fetchUserFriends(user.uid)),
+        dispatch(fetchFriendRequests(user.uid))
+      ]);
+      
+      console.log('Data refresh completed');
     } catch (error) {
       console.error('Failed to remove friend:', error);
+      console.error('Error details:', {
+        userId,
+        friendship,
+        currentUser: user.uid
+      });
+    } finally {
+      setRemovingFriend(null);
     }
   };
 
@@ -170,24 +241,24 @@ export default function Buddies() {
   const handleStartConversation = async (friendId) => {
     if (!user?.uid) return;
     
-    // Check if conversation already exists
-    const existingConversation = conversations.find(conv => 
-      conv.participants.includes(user.uid) && conv.participants.includes(friendId)
-    );
-    
-    if (existingConversation) {
-      // Navigate to existing conversation
-      navigate(`/chat/${existingConversation.id}`);
-    } else {
-      // Create new conversation
-      try {
+    try {
+      // Check if conversation already exists
+      const existingConversation = conversations.find(conv => 
+        conv.participants.includes(user.uid) && conv.participants.includes(friendId)
+      );
+      
+      if (existingConversation) {
+        // Navigate to existing conversation
+        navigate(`/chat/${existingConversation.id}`);
+      } else {
+        // Create new conversation
         const result = await dispatch(createConversation({
           participants: [user.uid, friendId]
         })).unwrap();
         navigate(`/chat/${result.id}`);
-      } catch (error) {
-        console.error('Failed to create conversation:', error);
       }
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
     }
   };
 
@@ -266,131 +337,41 @@ export default function Buddies() {
         {/* Loading State */}
         {loading && (
           <div className="text-center py-20">
-            <div className="text-lg">Loading fitness buddies...</div>
+            <RocketLoader message="Loading fitness buddies..." variant="light" />
           </div>
         )}
 
         {/* Users Grid */}
-        {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredUsers.map((userItem) => {
-              const friendStatus = getUserFriendStatus(userItem.uid);
-              const friendRequest = getFriendRequest(userItem.uid);
-              const friendship = getFriendship(userItem.uid);
-              
-              return (
-                <div key={userItem.uid} className={`${cardBg} rounded-lg shadow-lg ${borderColor} border overflow-hidden transition hover:shadow-xl`}>
-                  {/* User Header */}
-                  <div className="p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                      <img
-                        src={userItem.profilePicture || `https://ui-avatars.com/api/?name=${userItem.name}&background=random&size=64`}
-                        alt={userItem.name}
-                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg">{userItem.name || 'Anonymous User'}</h3>
-                        <p className={`text-sm ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>
-                          {userItem.email}
-                        </p>
-                      </div>
+                          {loading ? (
+                    <div className="flex justify-center items-center py-12">
+                      <RocketLoader message="Loading users..." variant="light" />
                     </div>
-
-                    {/* Bio */}
-                    {userItem.bio && (
-                      <p className={`text-sm mb-4 ${theme === "light" ? "text-gray-700" : "text-gray-300"}`}>
-                        {userItem.bio}
-                      </p>
-                    )}
-
-                    {/* Interests */}
-                    {userItem.interests && userItem.interests.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="font-medium text-sm mb-2">Interests:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {userItem.interests.slice(0, 3).map((interest, index) => (
-                            <span
-                              key={index}
-                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                            >
-                              {interest}
-                            </span>
-                          ))}
-                          {userItem.interests.length > 3 && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                              +{userItem.interests.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      {friendStatus === 'friend' && (
-                        <>
-                          <button
-                            onClick={() => handleStartConversation(userItem.uid)}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                            Message
-                          </button>
-                          <button
-                            onClick={() => handleRemoveFriend(userItem.uid)}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
-                          >
-                            <UserMinus className="w-4 h-4" />
-                            Remove
-                          </button>
-                        </>
-                      )}
-                      
-                      {friendStatus === 'request-received' && (
-                        <>
-                          <button
-                            onClick={() => handleAcceptFriendRequest(friendRequest.id, userItem.uid)}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
-                          >
-                            <UserCheck className="w-4 h-4" />
-                            Accept
-                          </button>
-                          <button
-                            onClick={() => handleRejectFriendRequest(friendRequest.id)}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
-                          >
-                            <UserX className="w-4 h-4" />
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      
-                      {friendStatus === 'request-sent' && (
-                        <button
-                          disabled
-                          className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-gray-400 text-white rounded-lg cursor-not-allowed"
-                        >
-                          <UserPlus className="w-4 h-4" />
-                          Request Sent
-                        </button>
-                      )}
-                      
-                      {friendStatus === 'none' && (
-                        <button
-                          onClick={() => handleSendFriendRequest(userItem.uid)}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                        >
-                          <UserPlus className="w-4 h-4" />
-                          Add Friend
-                        </button>
-                      )}
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredUsers.map((userItem) => {
+                        const friendStatus = getUserFriendStatus(userItem.uid);
+                        const friendRequest = getFriendRequest(userItem.uid);
+                        
+                        return (
+                          <div key={userItem.uid}>
+                            <ProfileCard
+                              user={{
+                                ...userItem,
+                                requestId: friendRequest?.id
+                              }}
+                              friendStatus={friendStatus}
+                              onMessage={handleStartConversation}
+                              onAddFriend={handleSendFriendRequest}
+                              onRemoveFriend={handleRemoveFriend}
+                              onAcceptRequest={handleAcceptFriendRequest}
+                              onRejectRequest={handleRejectFriendRequest}
+                              removingFriend={removingFriend}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  )}
 
         {/* Empty State */}
         {!loading && filteredUsers.length === 0 && (

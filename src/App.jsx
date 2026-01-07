@@ -4,7 +4,7 @@ import Register from "./pages/Auth/Register";
 import Home from "./pages/Home";
 import { useDispatch, useSelector } from "react-redux";
 import { onAuthStateChanged } from "firebase/auth";
-import { useEffect } from "react";
+import { useEffect ,useState } from "react";
 import { auth } from "./firebase";
 import { setUser, clearUser } from "./features/AuthSlice";   
 import { fetchUserProfile, clearProfile } from "./features/ProfileSlice";
@@ -19,11 +19,12 @@ import Chat from "./pages/Chat";
 import ExercisePlanner from "./pages/ExercisePlanner";
 import Workouts from "./pages/Workouts";
 import Profile from "./pages/Profile";
-
+import Shop from "./pages/Shop"
+import Cart from "./pages/Cart"
 const App = () => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
-
+  const [cart, setCart] = useState([]);
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -69,6 +70,9 @@ const App = () => {
         <Route path="/exercise-planner" element={<ExercisePlanner/>} />
         <Route path="/workouts" element={<Workouts/>} />
         <Route path="/profile" element={<Profile/>} />
+        <Route path="/shop" element={<Shop cart={cart} setCart={setCart} />} />
+        <Route path="/cart" element={<Cart cart={cart} setCart={setCart} />} />
+        
       </Routes>
     </Router>
   );

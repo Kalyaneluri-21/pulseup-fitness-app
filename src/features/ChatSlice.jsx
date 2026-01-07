@@ -18,18 +18,35 @@ import { db } from '../firebase';
 export const fetchChatConversations = createAsyncThunk(
   'chat/fetchChatConversations',
   async (userId) => {
-    const conversationsRef = collection(db, 'conversations');
-    const q = query(
-      conversationsRef, 
-      where('participants', 'array-contains', userId),
-      orderBy('lastMessageAt', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
-    const conversations = [];
-    querySnapshot.forEach((doc) => {
-      conversations.push({ id: doc.id, ...doc.data() });
-    });
-    return conversations;
+    try {
+      const conversationsRef = collection(db, 'conversations');
+      const q = query(
+        conversationsRef, 
+        where('participants', 'array-contains', userId)
+      );
+      const querySnapshot = await getDocs(q);
+      const conversations = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        conversations.push({ 
+          id: doc.id, 
+          ...data,
+          lastMessageAt: data.lastMessageAt || data.createdAt || new Date()
+        });
+      });
+      
+      // Sort conversations by lastMessageAt or createdAt
+      conversations.sort((a, b) => {
+        const aTime = a.lastMessageAt?.toDate ? a.lastMessageAt.toDate() : new Date(a.lastMessageAt);
+        const bTime = b.lastMessageAt?.toDate ? b.lastMessageAt.toDate() : new Date(b.lastMessageAt);
+        return bTime - aTime;
+      });
+      
+      return conversations;
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      throw error;
+    }
   }
 );
 
@@ -37,18 +54,22 @@ export const fetchChatConversations = createAsyncThunk(
 export const fetchMessages = createAsyncThunk(
   'chat/fetchMessages',
   async ({ conversationId, limit = 50 }) => {
-    const messagesRef = collection(db, 'conversations', conversationId, 'messages');
-    const q = query(
-      messagesRef, 
-      orderBy('timestamp', 'desc'),
-      limit(limit)
-    );
-    const querySnapshot = await getDocs(q);
-    const messages = [];
-    querySnapshot.forEach((doc) => {
-      messages.push({ id: doc.id, ...doc.data() });
-    });
-    return { conversationId, messages: messages.reverse() };
+    try {
+      const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+      const q = query(
+        messagesRef, 
+        orderBy('timestamp', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+      const messages = [];
+      querySnapshot.forEach((doc) => {
+        messages.push({ id: doc.id, ...doc.data() });
+      });
+      return { conversationId, messages };
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw error;
+    }
   }
 );
 
@@ -56,25 +77,30 @@ export const fetchMessages = createAsyncThunk(
 export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
   async ({ conversationId, senderId, content, type = 'text' }) => {
-    const messagesRef = collection(db, 'conversations', conversationId, 'messages');
-    const newMessage = {
-      senderId,
-      content,
-      type,
-      timestamp: serverTimestamp(),
-      read: false
-    };
-    const docRef = await addDoc(messagesRef, newMessage);
+    try {
+      const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+      const newMessage = {
+        senderId,
+        content,
+        type,
+        timestamp: serverTimestamp(),
+        read: false
+      };
+      const docRef = await addDoc(messagesRef, newMessage);
 
-    // Update conversation's last message
-    const conversationRef = doc(db, 'conversations', conversationId);
-    await updateDoc(conversationRef, {
-      lastMessage: content,
-      lastMessageAt: serverTimestamp(),
-      lastSenderId: senderId
-    });
+      // Update conversation's last message
+      const conversationRef = doc(db, 'conversations', conversationId);
+      await updateDoc(conversationRef, {
+        lastMessage: content,
+        lastMessageAt: serverTimestamp(),
+        lastSenderId: senderId
+      });
 
-    return { id: docRef.id, ...newMessage };
+      return { id: docRef.id, ...newMessage };
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
   }
 );
 
@@ -82,29 +108,34 @@ export const sendMessage = createAsyncThunk(
 export const createConversation = createAsyncThunk(
   'chat/createConversation',
   async ({ participants, initialMessage = null }) => {
-    const conversationsRef = collection(db, 'conversations');
-    const newConversation = {
-      participants,
-      createdAt: serverTimestamp(),
-      lastMessageAt: serverTimestamp(),
-      lastMessage: initialMessage || 'Conversation started',
-      lastSenderId: participants[0]
-    };
-    const docRef = await addDoc(conversationsRef, newConversation);
+    try {
+      const conversationsRef = collection(db, 'conversations');
+      const newConversation = {
+        participants,
+        createdAt: serverTimestamp(),
+        lastMessageAt: serverTimestamp(),
+        lastMessage: initialMessage || 'Conversation started',
+        lastSenderId: participants[0]
+      };
+      const docRef = await addDoc(conversationsRef, newConversation);
 
-    // If there's an initial message, add it
-    if (initialMessage) {
-      const messagesRef = collection(db, 'conversations', docRef.id, 'messages');
-      await addDoc(messagesRef, {
-        senderId: participants[0],
-        content: initialMessage,
-        type: 'text',
-        timestamp: serverTimestamp(),
-        read: false
-      });
+      // If there's an initial message, add it
+      if (initialMessage) {
+        const messagesRef = collection(db, 'conversations', docRef.id, 'messages');
+        await addDoc(messagesRef, {
+          senderId: participants[0],
+          content: initialMessage,
+          type: 'text',
+          timestamp: serverTimestamp(),
+          read: false
+        });
+      }
+
+      return { id: docRef.id, ...newConversation };
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      throw error;
     }
-
-    return { id: docRef.id, ...newConversation };
   }
 );
 
@@ -112,20 +143,25 @@ export const createConversation = createAsyncThunk(
 export const markMessagesAsRead = createAsyncThunk(
   'chat/markMessagesAsRead',
   async ({ conversationId, userId }) => {
-    const messagesRef = collection(db, 'conversations', conversationId, 'messages');
-    const q = query(
-      messagesRef, 
-      where('senderId', '!=', userId),
-      where('read', '==', false)
-    );
-    const querySnapshot = await getDocs(q);
-    
-    const updatePromises = querySnapshot.docs.map(doc => 
-      updateDoc(doc.ref, { read: true })
-    );
-    await Promise.all(updatePromises);
+    try {
+      const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+      const q = query(
+        messagesRef, 
+        where('senderId', '!=', userId),
+        where('read', '==', false)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const updatePromises = querySnapshot.docs.map(doc => 
+        updateDoc(doc.ref, { read: true })
+      );
+      await Promise.all(updatePromises);
 
-    return { conversationId, userId };
+      return { conversationId, userId };
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      throw error;
+    }
   }
 );
 
@@ -154,7 +190,11 @@ const chatSlice = createSlice({
       if (!state.messages[conversationId]) {
         state.messages[conversationId] = [];
       }
-      state.messages[conversationId].push(message);
+      // Check if message already exists
+      const exists = state.messages[conversationId].find(m => m.id === message.id);
+      if (!exists) {
+        state.messages[conversationId].push(message);
+      }
     },
     
     // Update conversation (for real-time updates)
@@ -168,7 +208,10 @@ const chatSlice = createSlice({
     
     // Add new conversation
     addConversation: (state, action) => {
-      state.conversations.unshift(action.payload);
+      const exists = state.conversations.find(conv => conv.id === action.payload.id);
+      if (!exists) {
+        state.conversations.unshift(action.payload);
+      }
     },
     
     // Mark messages as read locally
@@ -186,6 +229,10 @@ const chatSlice = createSlice({
     // Set real-time listener
     setRealTimeListener: (state, action) => {
       const { conversationId, unsubscribe } = action.payload;
+      // Clean up existing listener if any
+      if (state.realTimeListeners[conversationId]) {
+        state.realTimeListeners[conversationId]();
+      }
       state.realTimeListeners[conversationId] = unsubscribe;
     },
     
@@ -205,7 +252,6 @@ const chatSlice = createSlice({
       state.currentConversation = null;
       state.messages = {};
       state.unreadCount = 0;
-      state.clearRealTimeListeners();
     }
   },
   extraReducers: (builder) => {

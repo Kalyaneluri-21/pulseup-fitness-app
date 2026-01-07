@@ -1,0 +1,397 @@
+/* Chat Styles */
+.chat-section {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.chat-header {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.partner-selector {
+  margin-bottom: 15px;
+}
+
+.partner-selector select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.chat-header-content {
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.chat-header-content:hover {
+  background-color: #f5f5f5;
+}
+
+.chat-header h3 {
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chat-header p {
+  margin: 0 0 10px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.unread-badge {
+  background: #ff4444;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.messages-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.messages {
+  padding: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.message {
+  margin-bottom: 15px;
+}
+
+.message.sent {
+  text-align: right;
+}
+
+.message.received {
+  text-align: left;
+}
+
+.message-content {
+  display: inline-block;
+  max-width: 70%;
+  padding: 10px 15px;
+  border-radius: 18px;
+  word-wrap: break-word;
+}
+
+.message.sent .message-content {
+  background: #0084ff;
+  color: white;
+}
+
+.message.received .message-content {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.message-content p {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.message-time {
+  font-size: 11px;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.message-status {
+  font-weight: bold;
+}
+
+.message-status.read {
+  color: #34c759;
+}
+
+.message-status.delivered {
+  color: #007aff;
+}
+
+.message-status.pending {
+  color: #8e8e93;
+}
+
+.typing-indicator {
+  background: #f0f0f0;
+  color: #666;
+  padding: 10px 15px;
+  border-radius: 18px;
+  font-size: 14px;
+  display: inline-block;
+  margin-bottom: 15px;
+}
+
+.dots {
+  animation: typing 1.4s infinite;
+}
+
+@keyframes typing {
+  0%, 20% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.message-form {
+  padding: 20px;
+  border-top: 1px solid #eee;
+  background: white;
+}
+
+.message-form form {
+  display: flex;
+  gap: 10px;
+}
+
+.message-form input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 14px;
+  outline: none;
+}
+
+.message-form input:focus {
+  border-color: #0084ff;
+}
+
+.message-form button {
+  padding: 12px 24px;
+  background: #0084ff;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.message-form button:hover:not(:disabled) {
+  background: #0073e6;
+}
+
+.message-form button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.message-form button.sending {
+  background: #666;
+}
+
+.empty-chat {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.empty-chat-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.empty-chat p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.chat-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border: 1px solid #ffcdd2;
+}
+
+.chat-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .chat-header,
+  .messages-container,
+  .message-form {
+    background: #1c1c1e;
+    color: white;
+  }
+  
+  .message.received .message-content {
+    background: #2c2c2e;
+    color: white;
+  }
+  
+  .typing-indicator {
+    background: #2c2c2e;
+    color: #8e8e93;
+  }
+  
+  .message-form input {
+    background: #2c2c2e;
+    color: white;
+    border-color: #3a3a3c;
+  }
+  
+  .chat-header-content:hover {
+    background-color: #2c2c2e;
+  }
+}
+
+/* Chat-specific styles */
+.dots::after {
+  content: '';
+  animation: dots 1.5s steps(5, end) infinite;
+}
+
+@keyframes dots {
+  0%, 20% {
+    content: '';
+  }
+  40% {
+    content: '.';
+  }
+  60% {
+    content: '..';
+  }
+  80%, 100% {
+    content: '...';
+  }
+}
+
+/* Message bubble animations */
+.message-bubble {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling */
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* Friend list scrollbar */
+.friend-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.friend-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.friend-list::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 2px;
+}
+
+.friend-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+
+/* Message status indicators */
+.message-status {
+  transition: all 0.2s ease;
+}
+
+.message-status.sent {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.message-status.delivered {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.message-status.read {
+  color: rgba(255, 255, 255, 1);
+}
+
+/* Input focus effects */
+.chat-input:focus {
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+/* Button hover effects */
+.send-button:hover {
+  transform: scale(1.05);
+}
+
+.send-button:active {
+  transform: scale(0.95);
+}
+
+/* Friend item hover effects */
+.friend-item {
+  transition: all 0.2s ease;
+}
+
+.friend-item:hover {
+  transform: translateX(2px);
+}
+
+.friend-item.selected {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 197, 253, 0.1));
+}
+
+/* Dark mode adjustments */
+.dark .friend-item.selected {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 197, 253, 0.2));
+}
+
+/* Loading animation */
+.loading-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

@@ -6,6 +6,7 @@ import workoutReducer from "./features/WorkoutSlice";
 import progressReducer from "./features/ProgressSlice";
 import buddyReducer from "./features/BuddySlice";
 import chatReducer from "./features/ChatSlice";
+import cartReducer from "./features/CartSlice"
 
 export const Store = configureStore({
     reducer:{
@@ -15,6 +16,7 @@ export const Store = configureStore({
         workouts: workoutReducer,
         progress: progressReducer,
         buddies: buddyReducer,
-        chat: chatReducer
+        chat: chatReducer,
+        cart:cartReducer
     }
 })

@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { 
   collection, 
   doc, 
+  getDoc,
   getDocs, 
   addDoc, 
   updateDoc, 
@@ -18,14 +19,21 @@ import { db } from '../firebase';
 export const fetchAllUsers = createAsyncThunk(
   'buddies/fetchAllUsers',
   async (currentUserId) => {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('uid', '!=', currentUserId));
-    const querySnapshot = await getDocs(q);
-    const users = [];
-    querySnapshot.forEach((doc) => {
-      users.push({ id: doc.id, ...doc.data() });
-    });
-    return users;
+    try {
+      console.log('Fetching all users for:', currentUserId);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('uid', '!=', currentUserId));
+      const querySnapshot = await getDocs(q);
+      const users = [];
+      querySnapshot.forEach((doc) => {
+        users.push({ id: doc.id, ...doc.data() });
+      });
+      console.log('Fetched users:', users.length);
+      return users;
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      throw error;
+    }
   }
 );
 
@@ -33,42 +41,105 @@ export const fetchAllUsers = createAsyncThunk(
 export const fetchUserFriends = createAsyncThunk(
   'buddies/fetchUserFriends',
   async (userId) => {
-    const friendsRef = collection(db, 'friends');
-    const q = query(
-      friendsRef, 
-      where('status', '==', 'accepted'),
-      where('participants', 'array-contains', userId)
-    );
-    const querySnapshot = await getDocs(q);
-    const friends = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      const friendId = data.participants.find(id => id !== userId);
-      friends.push({ 
-        id: doc.id, 
-        friendId,
-        ...data 
+    try {
+      console.log('Fetching friends for user:', userId);
+      const friendsRef = collection(db, 'friends');
+      const q = query(
+        friendsRef, 
+        where('status', '==', 'accepted'),
+        where('participants', 'array-contains', userId)
+      );
+      const querySnapshot = await getDocs(q);
+      const friends = [];
+      
+      // Get all friend IDs first
+      const friendIds = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const friendId = data.participants.find(id => id !== userId);
+        friendIds.push({ docId: doc.id, friendId, data });
       });
-    });
-    return friends;
+      
+      // Fetch user data for each friend
+      const friendsWithUserData = await Promise.all(
+        friendIds.map(async ({ docId, friendId, data }) => {
+          try {
+            // Fetch user data from users collection
+            const userDoc = await getDoc(doc(db, 'users', friendId));
+            let userData = null;
+            
+            if (userDoc.exists()) {
+              userData = userDoc.data();
+            }
+            
+            // Convert Firebase Timestamps to regular timestamps
+            const processedData = {
+              ...data,
+              createdAt: data.createdAt ? (data.createdAt.seconds ? data.createdAt.seconds * 1000 : data.createdAt) : Date.now(),
+              updatedAt: data.updatedAt ? (data.updatedAt.seconds ? data.updatedAt.seconds * 1000 : data.updatedAt) : Date.now()
+            };
+            
+            return { 
+              id: docId, 
+              friendId,
+              friendData: userData, // Add user data
+              ...processedData 
+            };
+          } catch (error) {
+            console.error('Error fetching user data for friend:', friendId, error);
+            // Return friend without user data if there's an error
+            return { 
+              id: docId, 
+              friendId,
+              friendData: null,
+              ...data 
+            };
+          }
+        })
+      );
+      
+      console.log('Fetched friends with user data:', friendsWithUserData.length, friendsWithUserData);
+      return friendsWithUserData;
+    } catch (error) {
+      console.error('Error fetching user friends:', error);
+      throw error;
+    }
   }
 );
 
-// Async thunk for fetching friend requests
+// Async thunk for fetching friend requests (both sent and received)
 export const fetchFriendRequests = createAsyncThunk(
   'buddies/fetchFriendRequests',
   async (userId) => {
     const requestsRef = collection(db, 'friendRequests');
-    const q = query(
+    
+    // Fetch received requests
+    const receivedQuery = query(
       requestsRef, 
       where('toUserId', '==', userId),
       where('status', '==', 'pending')
     );
-    const querySnapshot = await getDocs(q);
+    
+    // Fetch sent requests
+    const sentQuery = query(
+      requestsRef, 
+      where('fromUserId', '==', userId),
+      where('status', '==', 'pending')
+    );
+    
+    const [receivedSnapshot, sentSnapshot] = await Promise.all([
+      getDocs(receivedQuery),
+      getDocs(sentQuery)
+    ]);
+    
     const requests = [];
-    querySnapshot.forEach((doc) => {
-      requests.push({ id: doc.id, ...doc.data() });
+    receivedSnapshot.forEach((doc) => {
+      requests.push({ id: doc.id, ...doc.data(), type: 'received' });
     });
+    sentSnapshot.forEach((doc) => {
+      requests.push({ id: doc.id, ...doc.data(), type: 'sent' });
+    });
+    
     return requests;
   }
 );
@@ -140,27 +211,29 @@ export const removeFriend = createAsyncThunk(
     const friendshipRef = doc(db, 'friends', friendshipId);
     await deleteDoc(friendshipRef);
 
-    // Update any pending requests to rejected
+    // Delete any pending requests between these users
     const requestsRef = collection(db, 'friendRequests');
     const q1 = query(
       requestsRef,
       where('fromUserId', '==', userId),
+      where('toUserId', '==', friendId),
       where('status', '==', 'pending')
     );
     const q2 = query(
       requestsRef,
+      where('fromUserId', '==', friendId),
       where('toUserId', '==', userId),
       where('status', '==', 'pending')
     );
+    
     const [querySnapshot1, querySnapshot2] = await Promise.all([
       getDocs(q1),
       getDocs(q2)
     ]);
+    
     const allDocs = [...querySnapshot1.docs, ...querySnapshot2.docs];
-    const updatePromises = allDocs.map(doc => 
-      updateDoc(doc.ref, { status: 'rejected', updatedAt: serverTimestamp() })
-    );
-    await Promise.all(updatePromises);
+    const deletePromises = allDocs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
 
     return { friendId, friendshipId };
   }
@@ -257,14 +330,14 @@ const buddySlice = createSlice({
       .addCase(sendFriendRequest.pending, (state) => {
         state.status = 'loading';
       })
-      .addCase(sendFriendRequest.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        // Update user's friend request status
-        const userIndex = state.allUsers.findIndex(user => user.uid === action.payload.toUserId);
-        if (userIndex !== -1) {
-          state.allUsers[userIndex].friendRequestSent = true;
-        }
-      })
+             .addCase(sendFriendRequest.fulfilled, (state, action) => {
+         state.status = 'succeeded';
+         // Add the sent request to the friendRequests array
+         state.friendRequests.push({
+           ...action.payload,
+           type: 'sent'
+         });
+       })
       .addCase(sendFriendRequest.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message;
@@ -272,14 +345,23 @@ const buddySlice = createSlice({
       .addCase(acceptFriendRequest.pending, (state) => {
         state.status = 'loading';
       })
-      .addCase(acceptFriendRequest.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        // Remove from requests and add to friends
-        state.friendRequests = state.friendRequests.filter(
-          request => request.id !== action.payload.requestId
-        );
-        // Friend will be added when fetchUserFriends is called
-      })
+                           .addCase(acceptFriendRequest.fulfilled, (state, action) => {
+          state.status = 'succeeded';
+          // Remove from requests
+          state.friendRequests = state.friendRequests.filter(
+            request => request.id !== action.payload.requestId
+          );
+          // Add to friends immediately with correct participant structure
+          const newFriend = {
+            id: action.payload.friendshipId,
+            friendId: action.payload.friend.id,
+            participants: [action.payload.fromUserId, action.payload.friend.id], // Correct participant structure
+            status: 'accepted',
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+          state.friends.push(newFriend);
+        })
       .addCase(acceptFriendRequest.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message;
@@ -287,12 +369,13 @@ const buddySlice = createSlice({
       .addCase(rejectFriendRequest.pending, (state) => {
         state.status = 'loading';
       })
-      .addCase(rejectFriendRequest.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        state.friendRequests = state.friendRequests.filter(
-          request => request.id !== action.payload
-        );
-      })
+             .addCase(rejectFriendRequest.fulfilled, (state, action) => {
+         state.status = 'succeeded';
+         // Remove the rejected request from both sent and received requests
+         state.friendRequests = state.friendRequests.filter(
+           request => request.id !== action.payload
+         );
+       })
       .addCase(rejectFriendRequest.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message;
@@ -302,7 +385,12 @@ const buddySlice = createSlice({
       })
       .addCase(removeFriend.fulfilled, (state, action) => {
         state.status = 'succeeded';
+        // Remove friend from friends list
         state.friends = state.friends.filter(friend => friend.friendId !== action.payload.friendId);
+        // Remove any pending requests between these users from the state
+        state.friendRequests = state.friendRequests.filter(request => 
+          !(request.fromUserId === action.payload.friendId || request.toUserId === action.payload.friendId)
+        );
       })
       .addCase(removeFriend.rejected, (state, action) => {
         state.status = 'failed';

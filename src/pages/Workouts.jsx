@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { addWorkout, updateWorkout, deleteWorkout } from '../features/WorkoutSlice';
+import RocketLoader from '../components/RocketLoader';
 
 const Workouts = () => {
   const dispatch = useDispatch();
@@ -71,7 +72,9 @@ const Workouts = () => {
   if (status === 'loading') {
     return (
       <div className="workouts-container">
-        <div className="loading">Loading workouts...</div>
+        <div className="loading">
+          <RocketLoader message="Loading workouts..." variant="light" />
+        </div>
       </div>
     );
   }
@@ -210,6 +213,8 @@ const Workouts = () => {
           padding: 20px;
           max-width: 1200px;
           margin: 0 auto;
+          background: linear-gradient(135deg, #caf0f8 0%, #e0f2fe 50%, #f0fdfa 100%);
+          min-height: 100vh;
         }
         
         .workouts-header {

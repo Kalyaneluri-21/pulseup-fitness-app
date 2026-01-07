@@ -224,7 +224,7 @@ export default function Dashboard() {
   const dash = Math.max(0, (percent / 100) * circumference)
   
   const getProgressColor = (p) => {
-    if (p < 20) return "#EF4444" // red
+    if (p < 20) return "#6B7280" // gray
     if (p < 50) return "#F59E0B" // dark yellow
     return "#10B981" // green
   }

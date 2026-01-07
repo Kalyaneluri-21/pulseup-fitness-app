@@ -497,7 +497,7 @@ export default function ExercisePlanner() {
                       {timer && (timer.isRunning || timer.isPaused || timer.timeLeft < timer.totalTime) && (
                         <button
                           onClick={() => resetTimer(item.id)}
-                          className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-sm"
+                          className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm"
                         >
                           Reset
                         </button>

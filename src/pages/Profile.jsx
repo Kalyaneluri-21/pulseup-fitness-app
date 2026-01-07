@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { updateUserProfile, fetchUserProfile } from '../features/ProfileSlice';
 import Header from '../components/Header';
+import RocketLoader from '../components/RocketLoader';
 import { ArrowLeft, Save, Edit } from 'lucide-react';
 
 const Profile = () => {
@@ -102,12 +103,12 @@ const Profile = () => {
 
   if (status === 'loading') {
     return (
-      <div className={`min-h-screen ${theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'} transition-colors duration-300`}>
+      <div className={`min-h-screen ${theme === 'light' ? 'bg-gradient-to-br from-[#caf0f8] via-[#e0f2fe] to-[#f0fdfa]' : 'bg-[#0a0a0a]'} transition-colors duration-300`}>
         <Header />
         <div className="p-6">
           <div className="max-w-2xl mx-auto">
             <div className="text-center py-20">
-              <div className="text-lg">Loading profile...</div>
+              <RocketLoader message="Loading profile..." variant="light" />
             </div>
           </div>
         </div>
@@ -116,7 +117,7 @@ const Profile = () => {
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'light' ? 'bg-gray-50' : 'bg-gray-900'} transition-colors duration-300`}>
+    <div className={`min-h-screen ${theme === 'light' ? 'bg-gradient-to-br from-[#caf0f8] via-[#e0f2fe] to-[#f0fdfa]' : 'bg-[#0a0a0a]'} transition-colors duration-300`}>
       <Header />
       
       <div className="p-6">
@@ -125,27 +126,27 @@ const Profile = () => {
             <button
               onClick={() => navigate("/dashboard")}
               className="flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition hover:scale-105 shadow-md text-white"
-              style={{
-                background: theme === "light"
-                  ? "linear-gradient(90deg, #6B54D3, #8C77E7)"
-                  : "linear-gradient(90deg, #3CB14A, #2A6A28)",
-              }}
+                             style={{
+                 background: theme === "light"
+                   ? "linear-gradient(90deg, #00b4d8, #48bfe3)"
+                   : "linear-gradient(90deg, #3CB14A, #2A6A28)",
+               }}
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
           </div>
 
-          <div className={`rounded-xl ${theme === 'light' ? 'bg-white' : 'bg-gray-800'} p-6 shadow-lg border ${theme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>
+                     <div className={`rounded-xl ${theme === 'light' ? 'bg-[#f0fdfa]' : 'bg-[#1a1a2e]'} p-6 shadow-lg border ${theme === 'light' ? 'border-[#90e0ef]' : 'border-gray-600'}`}>
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold">Profile</h1>
               <button
                 onClick={() => setIsEditing(!isEditing)}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg transition hover:scale-105"
-                style={{
-                  background: theme === "light" ? "#E9E2F9" : "#1B1B1B",
-                  color: theme === "light" ? "#6B54D3" : "#3CB14A",
-                }}
+                                 style={{
+                   background: theme === "light" ? "#caf0f8" : "#1a1a2e",
+                   color: theme === "light" ? "#00b4d8" : "#4a9eff",
+                 }}
               >
                 <Edit className="w-4 h-4" />
                 {isEditing ? 'Cancel' : 'Edit'}
@@ -309,3 +310,6 @@ const Profile = () => {
 };
 
 export default Profile;
+
+
+
