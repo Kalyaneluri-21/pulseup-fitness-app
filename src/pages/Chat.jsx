@@ -11,10 +11,10 @@ import {
   getDocs,
   doc,
   updateDoc,
-  limit,
+  serverTimestamp
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { useAuth } from "../context/AuthContext";
+// import { useAuth } from "../context/AuthContext"; // Removed - using Redux instead
 import Header from "../components/Header";
 import LoadingSpinner from "../components/LoadingSpinner";
 import RocketLoader from "../components/RocketLoader";
@@ -25,10 +25,11 @@ const MESSAGES_PER_PAGE = 50;
 const TYPING_TIMEOUT = 2000;
 
 const Chat = () => {
-  const { currentUser, userData, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.auth.user);
   const friends = useSelector((state) => state.buddies.friends);
+  const authLoading = useSelector((state) => state.auth.status === 'loading');
   
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -148,7 +149,7 @@ const Chat = () => {
     const findOrCreateChat = async () => {
       try {
         const chatsQuery = query(
-          collection(db, "chats"),
+          collection(db, "conversations"),
           where("participants", "array-contains", currentUser.uid)
         );
 
@@ -183,10 +184,10 @@ const Chat = () => {
             });
           }
         } else {
-          const newChatRef = await addDoc(collection(db, "chats"), {
+          const newChatRef = await addDoc(collection(db, "conversations"), {
             participants: [currentUser.uid, selectedPartnerId],
-            createdAt: Date.now(),
-            lastMessageAt: Date.now(),
+            createdAt: serverTimestamp(),
+            lastMessageAt: serverTimestamp(),
           });
 
           setChatId(newChatRef.id);
@@ -225,12 +226,11 @@ const Chat = () => {
     if (!chatId || !currentUser) return;
 
     const messagesQuery = query(
-      collection(db, "messages"),
-      where("chatId", "==", chatId)
-      // Removed orderBy and limit to avoid index requirements
+      collection(db, "conversations", chatId, "messages"),
+      orderBy("timestamp", "asc")
     );
 
-    const typingRef = doc(db, "chats", chatId);
+    const typingRef = doc(db, "conversations", chatId);
 
     const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
       const messagesData = snapshot.docs
@@ -242,18 +242,18 @@ const Chat = () => {
           // Handle both timestamp and regular date formats
           let timestampA, timestampB;
           
-          if (a.createdAt && typeof a.createdAt === 'object' && a.createdAt.seconds) {
-            timestampA = a.createdAt.seconds * 1000;
-          } else if (a.createdAt) {
-            timestampA = a.createdAt;
+          if (a.timestamp && typeof a.timestamp === 'object' && a.timestamp.seconds) {
+            timestampA = a.timestamp.seconds * 1000;
+          } else if (a.timestamp) {
+            timestampA = a.timestamp;
           } else {
             timestampA = 0;
           }
           
-          if (b.createdAt && typeof b.createdAt === 'object' && b.createdAt.seconds) {
-            timestampB = b.createdAt.seconds * 1000;
-          } else if (b.createdAt) {
-            timestampB = b.createdAt;
+          if (b.timestamp && typeof b.timestamp === 'object' && b.timestamp.seconds) {
+            timestampB = b.timestamp.seconds * 1000;
+          } else if (b.timestamp) {
+            timestampB = b.timestamp;
           } else {
             timestampB = 0;
           }
@@ -313,7 +313,7 @@ const Chat = () => {
     if (!chatId || !currentUser) return;
 
     try {
-      const typingRef = doc(db, "chats", chatId);
+      const typingRef = doc(db, "conversations", chatId);
       await updateDoc(typingRef, { typing: currentUser.uid });
 
       if (typingTimeoutRef.current) {
@@ -339,7 +339,7 @@ const Chat = () => {
 
       for (const message of unreadMessages) {
         try {
-          await updateDoc(doc(db, "messages", message.id), { read: true });
+          await updateDoc(doc(db, "conversations", chatId, "messages", message.id), { read: true });
         } catch (error) {
           console.error("Error marking message as read:", error);
         }
@@ -364,24 +364,20 @@ const Chat = () => {
     setSendingMessage(true);
 
     try {
-      const messageDoc = await addDoc(collection(db, "messages"), {
-        chatId,
+      const messageDoc = await addDoc(collection(db, "conversations", chatId, "messages"), {
         senderId: currentUser.uid,
-        senderName: currentUser.email,
-        text: messageText,
-        createdAt: Date.now(),
+        senderName: currentUser.email || currentUser.displayName,
+        content: messageText,
+        timestamp: serverTimestamp(),
         read: false,
-        delivered: false,
+        type: 'text'
       });
 
-      // Mark as delivered
-      await updateDoc(doc(db, "messages", messageDoc.id), {
-        delivered: true,
-      });
-
-      // Update chat's lastMessageAt
-      await updateDoc(doc(db, "chats", chatId), {
-        lastMessageAt: Date.now(),
+      // Update conversation's lastMessageAt
+      await updateDoc(doc(db, "conversations", chatId), {
+        lastMessageAt: serverTimestamp(),
+        lastMessage: messageText,
+        lastSenderId: currentUser.uid
       });
 
       setSendingMessage(false);
@@ -400,12 +396,12 @@ const Chat = () => {
     messages.forEach(message => {
       // Handle both timestamp and regular date formats
       let timestamp;
-      if (message.createdAt && typeof message.createdAt === 'object' && message.createdAt.seconds) {
+      if (message.timestamp && typeof message.timestamp === 'object' && message.timestamp.seconds) {
         // Firebase Timestamp
-        timestamp = message.createdAt.seconds * 1000;
-      } else if (message.createdAt) {
+        timestamp = message.timestamp.seconds * 1000;
+      } else if (message.timestamp) {
         // Regular timestamp
-        timestamp = message.createdAt;
+        timestamp = message.timestamp;
       } else {
         timestamp = Date.now();
       }
@@ -679,19 +675,19 @@ const Chat = () => {
                                    : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm"
                                }`}
                              >
-                              <p className="text-sm">{message.text}</p>
+                              <p className="text-sm">{message.content}</p>
                               <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
                                 message.senderId === currentUser?.uid ? "text-green-100" : "text-gray-500"
                               }`}>
                                                                  <span>
                                    {(() => {
                                      let timestamp;
-                                     if (message.createdAt && typeof message.createdAt === 'object' && message.createdAt.seconds) {
+                                     if (message.timestamp && typeof message.timestamp === 'object' && message.timestamp.seconds) {
                                        // Firebase Timestamp
-                                       timestamp = message.createdAt.seconds * 1000;
-                                     } else if (message.createdAt) {
+                                       timestamp = message.timestamp.seconds * 1000;
+                                     } else if (message.timestamp) {
                                        // Regular timestamp
-                                       timestamp = message.createdAt;
+                                       timestamp = message.timestamp;
                                      } else {
                                        timestamp = Date.now();
                                      }
@@ -706,12 +702,10 @@ const Chat = () => {
                                    className={`message-status ${
                                      message.read
                                        ? "read"
-                                       : message.delivered
-                                       ? "delivered"
                                        : "sent"
                                    }`}
                                  >
-                                    {message.read ? "✓✓" : message.delivered ? "✓" : "·"}
+                                    {message.read ? "✓✓" : "✓"}
                                   </span>
                                 )}
                               </div>
