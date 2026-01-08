@@ -197,14 +197,14 @@ const Home = () => {
               Getting Started is <br /> Simple & Easy!
             </h2>
             <ul className={`mt-6 space-y-4 ${textSecondary}`}>
-              <li>✅ Download the App</li>
+              <li>✅ Signup and login</li>
               <li>✅ Create & Personalize</li>
               <li>✅ Track Your Progress</li>
             </ul>
             <p
               className={`mt-6 font-semibold underline cursor-pointer ${textPrimary}`}
             >
-              Download App →
+              don't be late start it now →
             </p>
           </div>
           <div className="flex justify-center">

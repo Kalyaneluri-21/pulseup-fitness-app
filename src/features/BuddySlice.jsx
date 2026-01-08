@@ -345,23 +345,13 @@ const buddySlice = createSlice({
       .addCase(acceptFriendRequest.pending, (state) => {
         state.status = 'loading';
       })
-                           .addCase(acceptFriendRequest.fulfilled, (state, action) => {
-          state.status = 'succeeded';
-          // Remove from requests
-          state.friendRequests = state.friendRequests.filter(
-            request => request.id !== action.payload.requestId
-          );
-          // Add to friends immediately with correct participant structure
-          const newFriend = {
-            id: action.payload.friendshipId,
-            friendId: action.payload.friend.id,
-            participants: [action.payload.fromUserId, action.payload.friend.id], // Correct participant structure
-            status: 'accepted',
-            createdAt: new Date(),
-            updatedAt: new Date()
-          };
-          state.friends.push(newFriend);
-        })
+      .addCase(acceptFriendRequest.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        // Remove from requests
+        state.friendRequests = state.friendRequests.filter(
+          request => request.id !== action.payload.requestId
+        );
+      })
       .addCase(acceptFriendRequest.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message;

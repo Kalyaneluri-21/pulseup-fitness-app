@@ -4,7 +4,11 @@ import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../../firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { setUser, setAuthStatus, setAuthError } from "../../features/AuthSlice";
+import {
+  setUser,
+  setAuthStatus,
+  setAuthError,
+} from "../../features/AuthSlice";
 import { toggleTheme } from "../../features/ThemeSlice";
 import { Moon, Sun, ArrowLeft } from "lucide-react";
 
@@ -35,9 +39,11 @@ const Register = () => {
 
       await setDoc(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
+        name: name,
         email: cred.user.email,
         displayName: name,
         photoURL: cred.user.photoURL || "",
+        interests: [],
         createdAt: Date.now(),
       });
 
@@ -50,8 +56,8 @@ const Register = () => {
         })
       );
 
-      navigate("/login");
       setDone(true);
+      setTimeout(() => navigate("/dashboard"), 1500);
     } catch (err) {
       const cleanedError = err.message.replace("Firebase:", "").trim();
       setError(cleanedError);
@@ -69,11 +75,7 @@ const Register = () => {
       {/* HEADER */}
       <header
         className={`w-full px-6 py-3 flex items-center justify-between shadow-md backdrop-blur-md transition-all duration-500
-        ${
-          theme === "light"
-            ? "bg-gradient-to-r from-[#BBA4E6] to-[#E9E2F9]"
-            : "bg-gradient-to-r from-[#0f2027] via-[#203a43] to-[#2c5364]"
-        }`}
+        ${theme === "light" ? "bg-gradient-to-r from-[#BBA4E6] to-[#E9E2F9]" : "bg-gradient-to-r from-[#0f2027] via-[#203a43] to-[#2c5364]"}`}
       >
         <Link to="/" className="flex items-center">
           <h1
@@ -86,14 +88,14 @@ const Register = () => {
         </Link>
 
         <div className="flex items-center gap-4">
+          
+
           <button
             onClick={() => navigate("/")}
             className={`flex items-center gap-1 px-4 py-2 rounded-lg font-semibold text-white shadow-md transition hover:scale-105
-            ${
-              theme === "light"
-                ? "bg-gradient-to-r from-[#6B54D3] to-[#8C77E7]"
-                : "bg-gradient-to-r from-[#3CB14A] to-[#2A6A28]"
-            }`}
+            ${theme === "light"
+              ? "bg-gradient-to-r from-[#6B54D3] to-[#8C77E7]"
+              : "bg-gradient-to-r from-[#3CB14A] to-[#2A6A28]"}`}
           >
             <ArrowLeft className="w-5 h-5" />
             Back
@@ -115,11 +117,7 @@ const Register = () => {
       {/* MAIN */}
       <div
         className={`grid place-items-center min-h-[calc(100vh-60px)] px-4 transition-all duration-500
-        ${
-          theme === "light"
-            ? "bg-gradient-to-br from-[#BBA4E6] to-[#E9E2F9]"
-            : "bg-gradient-to-br from-[#0f2027] via-[#203a43] to-[#2c5364]"
-        }`}
+        ${theme === "light" ? "bg-gradient-to-br from-[#BBA4E6] to-[#E9E2F9]" : "bg-gradient-to-br from-[#0f2027] via-[#203a43] to-[#2c5364]"}`}
       >
         <div
           className={`w-full max-w-md p-8 rounded-2xl shadow-xl backdrop-blur-md transition
@@ -139,11 +137,7 @@ const Register = () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className={`w-full px-4 py-3 rounded-lg border-none text-sm shadow-inner focus:ring-2 focus:ring-indigo-500
-              ${
-                theme === "light"
-                  ? "bg-white/90 text-[#4B0082]"
-                  : "bg-[#1B1B1B]/80 text-gray-200"
-              }`}
+              ${theme === "light" ? "bg-white/90 text-[#4B0082]" : "bg-[#1B1B1B]/80 text-gray-200"}`}
               required
             />
             <input
@@ -152,11 +146,7 @@ const Register = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={`w-full px-4 py-3 rounded-lg border-none text-sm shadow-inner focus:ring-2 focus:ring-indigo-500
-              ${
-                theme === "light"
-                  ? "bg-white/90 text-[#4B0082]"
-                  : "bg-[#1B1B1B]/80 text-gray-200"
-              }`}
+              ${theme === "light" ? "bg-white/90 text-[#4B0082]" : "bg-[#1B1B1B]/80 text-gray-200"}`}
               required
             />
             <input
@@ -165,34 +155,21 @@ const Register = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={`w-full px-4 py-3 rounded-lg border-none text-sm shadow-inner focus:ring-2 focus:ring-indigo-500
-              ${
-                theme === "light"
-                  ? "bg-white/90 text-[#4B0082]"
-                  : "bg-[#1B1B1B]/80 text-gray-200"
-              }`}
+              ${theme === "light" ? "bg-white/90 text-[#4B0082]" : "bg-[#1B1B1B]/80 text-gray-200"}`}
               required
             />
 
-            {error && (
-              <p className="text-red-500 text-sm text-center">{error}</p>
-            )}
-            {done && (
-              <p className="text-green-500 text-sm text-center">
-                ✅ Registered Successfully!
-              </p>
-            )}
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {done && <p className="text-green-500 text-sm text-center">✅ Registered Successfully!</p>}
 
             <button
               type="submit"
               disabled={loading}
               className={`w-full py-3 rounded-lg font-bold text-white shadow-lg transform transition hover:scale-[1.02]
-              ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : theme === "light"
+              ${loading ? "bg-gray-400 cursor-not-allowed" :
+                theme === "light"
                   ? "bg-gradient-to-r from-[#6B54D3] to-[#8C77E7]"
-                  : "bg-gradient-to-r from-[#3CB14A] to-[#2A6A28]"
-              }`}
+                  : "bg-gradient-to-r from-[#3CB14A] to-[#2A6A28]"}`}
             >
               {loading ? "Creating…" : "🚀 Register"}
             </button>

@@ -9,7 +9,9 @@ import { auth } from "./firebase";
 import { setUser, clearUser } from "./features/AuthSlice";   
 import { fetchUserProfile, clearProfile } from "./features/ProfileSlice";
 import { fetchUserWorkouts, clearWorkouts } from "./features/WorkoutSlice";
-import { fetchProgress } from "./features/ProgressSlice";
+import { fetchProgress, clearProgress } from "./features/ProgressSlice";
+import { clearBuddies } from "./features/BuddySlice";
+import { clearChat } from "./features/ChatSlice";
 import Dashboard from "./pages/Dashboard";
 import OnboardingInterests from "./pages/OnboardingInterests";
 import Progress from "./pages/Progress";
@@ -43,10 +45,13 @@ const App = () => {
         dispatch(fetchUserWorkouts(user.uid));
         dispatch(fetchProgress(user.uid));
       } else {
-        // User is signed out
+        // User is signed out - clear all user data
         dispatch(clearUser());
         dispatch(clearProfile());
         dispatch(clearWorkouts());
+        dispatch(clearProgress());
+        dispatch(clearBuddies());
+        dispatch(clearChat());
       }
     });
 

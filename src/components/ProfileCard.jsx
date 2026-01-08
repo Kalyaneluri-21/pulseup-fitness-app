@@ -115,30 +115,38 @@ export default function ProfileCard({ user, onMessage, onAddFriend, onRemoveFrie
         </div>
       </div>
 
-                      {/* Profile Info */}
-        <div className="pt-16 pb-6 px-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900 mb-1">{user.name}</h3>
-              <p className="text-sm text-gray-600 mb-2">@{user.email?.split('@')[0] || 'user'}</p>
-            </div>
+      {/* Profile Info */}
+      <div className="pt-16 pb-6 px-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h3 className={`text-xl font-bold mb-1 ${textColor}`}>{user.name || user.displayName}</h3>
+            <p className={`text-sm mb-2 ${theme === "light" ? "text-gray-600" : "text-gray-400"}`}>@{user.email?.split('@')[0] || 'user'}</p>
           </div>
+        </div>
 
         {/* Interests */}
         {user.interests && user.interests.length > 0 && (
           <div className="mb-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-2">Interests</h4>
+            <h4 className={`text-sm font-semibold mb-2 ${textColor}`}>Interests</h4>
             <div className="flex flex-wrap gap-2">
               {user.interests.slice(0, 4).map((interest, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium"
+                  className={`px-3 py-1 text-xs rounded-full font-medium ${
+                    theme === "light" 
+                      ? "bg-blue-100 text-blue-800" 
+                      : "bg-blue-900 text-blue-200"
+                  }`}
                 >
                   {interest}
                 </span>
               ))}
               {user.interests.length > 4 && (
-                <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                <span className={`px-3 py-1 text-xs rounded-full ${
+                  theme === "light" 
+                    ? "bg-gray-100 text-gray-600" 
+                    : "bg-gray-700 text-gray-300"
+                }`}>
                   +{user.interests.length - 4} more
                 </span>
               )}

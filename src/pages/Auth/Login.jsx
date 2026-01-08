@@ -36,7 +36,7 @@ const Login = () => {
         })
       );
 
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       const cleanedError = err.message.replace("Firebase:", "").trim();
       setError(cleanedError);
@@ -72,7 +72,7 @@ const Login = () => {
 
         <div className="flex items-center gap-4">
           {/* THEME TOGGLE */}
-
+          
           {/* BACK BTN */}
           <button
             onClick={() => navigate("/")}
@@ -101,6 +101,7 @@ const Login = () => {
               <Sun className="w-6 h-6 text-[#3CB14A]" />
             )}
           </button>
+
         </div>
       </header>
 
