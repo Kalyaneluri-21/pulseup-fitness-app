@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header";
 
 // Local assets
-import fitnessHero from "../assets/fitnesshero.jpg";
+import fitnessHero from "../assets/fitnessHero.jpg";
 import yogaMaintain from "../assets/yogamaintain.jpg";
 import dietPlan from "../assets/dietplan.jpg";
 import trackProgress from "../assets/track progress.jpg";

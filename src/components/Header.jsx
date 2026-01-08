@@ -1,27 +1,26 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
 import { X, User, Sun, Moon, Settings, LogOut, Camera, Edit3 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleTheme } from "../features/ThemeSlice";
 import { clearUser } from "../features/AuthSlice";
 import { clearBuddies } from "../features/BuddySlice";
+import { clearProfile } from "../features/ProfileSlice";
+import { clearWorkouts } from "../features/WorkoutSlice";
+import { clearChat } from "../features/ChatSlice";
+import { clearProgress } from "../features/ProgressSlice";
 
 const Header = () => {
-  const [user, setUser] = useState(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const theme = useSelector((state) => state.theme.theme);
+  const user = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
   const profileMenuRef = useRef(null);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
-    return () => unsub();
-  }, []);
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -44,11 +43,14 @@ const Header = () => {
     try {
       await signOut(auth);
       dispatch(clearUser());
+      dispatch(clearProfile());
+      dispatch(clearWorkouts());
       dispatch(clearBuddies());
-      setUser(null); // 🔥 fix: clear local state
+      dispatch(clearChat());
+      dispatch(clearProgress());
       setIsProfileMenuOpen(false);
       setIsMobileOpen(false);
-      navigate("/"); // 🔥 redirect to home after logout
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
     }
